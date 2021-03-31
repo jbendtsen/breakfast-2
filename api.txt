@@ -1,0 +1,36 @@
+Existing Macro Functions:
+
+### void macro.log(str text)
+Prints 'text' to the command window on a new line.
+
+### str macro.get_buffer()
+Returns a string representation of the current state of the text buffer.
+
+### void macro.set_buffer(str text)
+Sets the text in the text buffer window to just the contents of 'text'.
+
+### void macro.write_data(bytes|bytearray data)
+Writes the contents of data to the serial interface
+
+### bytes macro.read_data(int size = 1)
+Blocks until 'size' bytes of data from the serial interface are available, then returns them
+
+Events:
+
+### void on_buffer_changed()
+Called when the text in the buffer window has changed.
+To get that text, call macro.get_buffer().
+
+### void on_command(str text)
+Called when a command is issued from the "Command" tab of this macro.
+'text' contains the contents of the command bar as a single string.
+
+### void on_direct_event(int type, int value, int x, int y)
+Called when an input event is fired within the window in the direct tab.
+'type' contains the event type, out of key_down, key_up, mouse_down, mouse_up, mouse_move, mouse_scroll
+'value' contains the key or button pressed
+'x' and 'y' will contain the position inside the direct window IF 'type' is mouse_down, mouse_up or mouse_move
+
+### void on_recv_serial(bytes data)
+Called when there is new data that has just been received over serial.
+'data' contains the unprocessed data.
