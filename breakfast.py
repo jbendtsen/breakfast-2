@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import os
+import sys
+import traceback
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -58,13 +60,24 @@ def try_open_window(idx, obj):
 	obj.populate_ui(wnd, grid, mono_style)
 	wnd.show_all()
 
-def macro_new(widget):
-	macros.add_new_tab()
+def macro_new(widget, window):
+	if window != macros.window:
+		return
 
-def macro_open(widget):
+	macros.add_new_tab()
+	macros.populate_notebook()
+	macros.window.show_all()
+
+def macro_open(widget, window):
+	if window != macros.window:
+		return
+
 	macros.open_file()
 
-def macro_save(widget):
+def macro_save(widget, window):
+	if window != macros.window:
+		return
+
 	macros.save_current_tab()
 
 def open_io_window(widget):
@@ -84,6 +97,9 @@ def create_window(idx, wnd_w=600, wnd_h=400):
 	wnd_y = 200 + (idx * 48)
 	window.move(wnd_x, wnd_y)
 
+	accel = Gtk.AccelGroup()
+	window.add_accel_group(accel)
+
 	grid = Gtk.Grid(hexpand=True, vexpand=True)
 	grid.set_row_spacing(10)
 	grid.set_column_spacing(10)
@@ -94,14 +110,20 @@ def create_window(idx, wnd_w=600, wnd_h=400):
 
 	top_file = Gtk.MenuItem(label="File")
 	top_file.set_submenu(m_file)
+
 	file1 = Gtk.MenuItem(label="New")
-	file1.connect("activate", macro_new)
+	file1.connect("activate", macro_new, window)
+	file1.add_accelerator("activate", accel, Gdk.KEY_n, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
 	m_file.append(file1)
+
 	file2 = Gtk.MenuItem(label="Open")
-	file2.connect("activate", macro_open)
+	file2.connect("activate", macro_open, window)
+	file2.add_accelerator("activate", accel, Gdk.KEY_o, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
 	m_file.append(file2)
+
 	file3 = Gtk.MenuItem(label="Save")
-	file3.connect("activate", macro_save)
+	file3.connect("activate", macro_save, window)
+	file3.add_accelerator("activate", accel, Gdk.KEY_s, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
 	m_file.append(file3)
 
 	top_wnds = Gtk.MenuItem(label="Window")
