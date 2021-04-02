@@ -38,131 +38,113 @@ green_style.load_from_data(b"""
 io = IO()
 macros = Macros()
 
-window_names = ["I/O", "Macros"]
-windows = []
-
 def close_window(widget):
-	idx = 0
-	for w in windows:
-		if widget == w:
-			break
-		idx += 1
-
-	if idx >= len(windows):
-		return
-
-	windows[idx] = None
-	for w in windows:
-		if w is not None:
-			return
-
 	Gtk.main_quit()
 
-def try_open_window(idx, obj):
-	if windows[idx] is not None:
-		return
-
-	wnd, grid = create_window(idx)
-	windows[idx] = wnd
-
-	obj.populate_ui(wnd, grid, mono_style)
-	wnd.show_all()
-
 def macro_new(widget, window):
-	if window != macros.window:
-		return
-
 	macros.add_new_tab()
 	macros.populate_notebook()
 	macros.window.show_all()
 
 def macro_open(widget, window):
-	if window != macros.window:
-		return
-
 	macros.open_file()
 
 def macro_save(widget, window):
-	if window != macros.window:
-		return
-
 	macros.save_current_tab()
 
-def open_io_window(widget):
-	try_open_window(0, io)
+def connect_press_listener(widget, ev, ui):
+	if ev.keyval == Gdk.KEY_Return:
+		ui.connect()
 
-def open_macros_window(widget):
-	try_open_window(1, macros)
+def send_press_listener(widget, ev, ui):
+	if ev.keyval == Gdk.KEY_Return:
+		ui.send()
 
-def create_window(idx, wnd_w=600, wnd_h=400):
-	window = Gtk.Window()
-	window.set_title("Breakfast - " + window_names[idx])
-	window.set_border_width(10)
-	window.set_default_size(wnd_w, wnd_h)
-	window.connect("destroy", close_window)
+class UI:
+	def __init__(self):
+		self.window = Gtk.Window()
+		self.window.set_title("Breakfast")
+		self.window.set_border_width(10)
 
-	wnd_x = 200 + (idx * 64)
-	wnd_y = 200 + (idx * 48)
-	window.move(wnd_x, wnd_y)
+		wnd_w = 600
+		wnd_h = 400
+		self.window.set_default_size(wnd_w, wnd_h)
 
-	accel = Gtk.AccelGroup()
-	window.add_accel_group(accel)
+		wnd_x = 200
+		wnd_y = 200
+		self.window.move(wnd_x, wnd_y)
 
-	grid = Gtk.Grid(hexpand=True, vexpand=True)
-	grid.set_row_spacing(10)
-	grid.set_column_spacing(10)
-	window.add(grid)
+		self.window.connect("destroy", close_window)
 
-	m_file = Gtk.Menu()
-	m_wnds = Gtk.Menu()
+		accel = Gtk.AccelGroup()
+		self.window.add_accel_group(accel)
 
-	top_file = Gtk.MenuItem(label="File")
-	top_file.set_submenu(m_file)
+		self.grid = Gtk.Grid(hexpand=True, vexpand=True)
+		self.grid.set_row_spacing(10)
+		self.grid.set_column_spacing(10)
+		self.window.add(self.grid)
 
-	file1 = Gtk.MenuItem(label="New")
-	file1.connect("activate", macro_new, window)
-	file1.add_accelerator("activate", accel, Gdk.KEY_n, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
-	m_file.append(file1)
+		m_file = Gtk.Menu()
+		m_wnds = Gtk.Menu()
 
-	file2 = Gtk.MenuItem(label="Open")
-	file2.connect("activate", macro_open, window)
-	file2.add_accelerator("activate", accel, Gdk.KEY_o, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
-	m_file.append(file2)
+		top_file = Gtk.MenuItem(label="File")
+		top_file.set_submenu(m_file)
 
-	file3 = Gtk.MenuItem(label="Save")
-	file3.connect("activate", macro_save, window)
-	file3.add_accelerator("activate", accel, Gdk.KEY_s, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
-	m_file.append(file3)
+		file1 = Gtk.MenuItem(label="New")
+		file1.connect("activate", macro_new, self.window)
+		file1.add_accelerator("activate", accel, Gdk.KEY_n, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
+		m_file.append(file1)
 
-	top_wnds = Gtk.MenuItem(label="Window")
-	top_wnds.set_submenu(m_wnds)
+		file2 = Gtk.MenuItem(label="Open")
+		file2.connect("activate", macro_open, self.window)
+		file2.add_accelerator("activate", accel, Gdk.KEY_o, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
+		m_file.append(file2)
 
-	wnds_io = Gtk.MenuItem(label="I/O")
-	wnds_io.connect("activate", open_io_window)
-	m_wnds.append(wnds_io)
+		file3 = Gtk.MenuItem(label="Save")
+		file3.connect("activate", macro_save, self.window)
+		file3.add_accelerator("activate", accel, Gdk.KEY_s, Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
+		m_file.append(file3)
 
-	wnds_macros = Gtk.MenuItem(label="Macros")
-	wnds_macros.connect("activate", open_macros_window)
-	m_wnds.append(wnds_macros)
+		mb = Gtk.MenuBar()
+		mb.append(top_file)
+		self.grid.attach(mb, 0, 0, 1, 1)
 
-	mb = Gtk.MenuBar()
-	mb.append(top_file)
-	mb.append(top_wnds)
-	grid.attach(mb, 0, 0, 1, 1)
+		self.device_bar = Gtk.Entry(hexpand=True)
+		self.device_bar.io_ref = self
+		self.device_bar.connect("key-press-event", connect_press_listener, self)
 
-	return (window, grid)
+		apply_mono_style(self.device_bar, mono_style)
+		self.device_bar.get_style_context().add_provider(green_style, Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
-wnd_io, grid_io = create_window(0)
-wnd_macros, grid_macros = create_window(1)
+		self.grid.attach(self.device_bar, 0, 1, 1, 1)
 
-windows.append(wnd_io)
-windows.append(wnd_macros)
+		device_btn = Gtk.Button(label="Connect")
+		device_btn.connect("clicked", lambda widget, ui : ui.connect(), self)
+		self.grid.attach(device_btn, 1, 1, 1, 1)
 
-io.populate_ui(wnd_io, grid_io, mono_style)
-macros.populate_ui(wnd_macros, grid_macros, mono_style)
+		self.notebook = Gtk.Notebook(hexpand=True, vexpand=True)
+		self.grid.attach(self.notebook, 0, 2, 2, 1)
 
-wnd_io.show_all()
-wnd_macros.show_all()
+		self.out_bar = Gtk.Entry(hexpand=True)
+		self.out_bar.connect("key-press-event", send_press_listener, self)
+		apply_mono_style(self.out_bar, mono_style)
+		self.grid.attach(self.out_bar, 0, 3, 1, 1)
+
+		out_btn = Gtk.Button(label="Send")
+		out_btn.connect("clicked", lambda widget, ui : ui.send(), self)
+		self.grid.attach(out_btn, 1, 3, 1, 1)
+
+	def connect(self):
+		io.try_connect(self.device_bar.get_text())
+
+	def send(self):
+		s = self.out_bar.get_text()
+		self.out_bar.set_text("")
+		io.send_byte_string(s)
+
+ui = UI()
+macros.populate_notebook()
+ui.window.show_all()
 
 try:
 	Gtk.main()

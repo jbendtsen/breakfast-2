@@ -105,60 +105,19 @@ def str2ba(string):
 	return buf
 
 class IO:
-	def connect_listener(widget, io):
-		io.try_connect(io.device_bar.get_text())
+	def __init__(self):
+		self.serial = Serial()
+		self.comms = Comms(self)
 
-	def send_listener(widget, io):
-		s = io.out_bar.get_text()
-
+	def send_byte_string(self, s):
 		data = str2ba(s)
 		if data is None:
 			return
 
-		io.out_bar.set_text("")
-		io.comms.send(data)
-
-	def entry_listener(widget, ev, func):
-		if ev.keyval == Gdk.KEY_Return:
-			func(widget, widget.io_ref)
-
-	def __init__(self):
-		self.serial = Serial()
-		self.comms = Comms(self)
-		self.data = bytearray()
-		self.feed_queue = queue.Queue()
-		self.feed_thread = None
+		self.comms.send(data)
 
 	def append_byte(self, byte):
-		self.feed_queue.put(byte)
 		macros.data_queue.put(byte)
-
-		if self.feed_thread is None or not self.feed_thread.is_alive():
-			self.feed_thread = threading.Thread(target=lambda: self.add_bytes_to_feed())
-			self.feed_thread.start()
-
-	def add_bytes_to_feed(self):
-		while not self.feed_queue.empty():
-			latest = bytearray()
-
-			empty = False
-			while not empty:
-				try:
-					byte = self.feed_queue.get(block=False)
-					latest.append(byte)
-				except:
-					empty = True
-
-			msg = ""
-			for byte in latest:
-				msg += "{0:02x} ".format(byte)
-
-			self.feed.set_editable(True)
-			buf = self.feed.get_buffer()
-			buf.insert(buf.get_end_iter(), msg)
-			self.feed.set_editable(False)
-
-			time.sleep(0.1)
 
 	def try_connect(self, name):
 		error = True
@@ -172,7 +131,7 @@ class IO:
 		else:
 			error = False
 
-		style = self.device_bar.get_style_context()
+		style = ui.device_bar.get_style_context()
 
 		if error:
 			if style.has_class("green"):
@@ -191,43 +150,3 @@ class IO:
 			self.comms = Comms(self)
 
 		self.comms.start()
-
-	def populate_ui(self, window, grid, mono_style):
-		self.device_bar = Gtk.Entry(hexpand=True)
-		self.device_bar.io_ref = self
-		self.device_bar.connect("key-press-event", IO.entry_listener, IO.connect_listener)
-
-		apply_mono_style(self.device_bar, mono_style)
-		self.device_bar.get_style_context().add_provider(green_style, Gtk.STYLE_PROVIDER_PRIORITY_USER)
-
-		grid.attach(self.device_bar, 0, 1, 1, 1)
-
-		device_btn = Gtk.Button(label="Connect")
-		device_btn.connect("clicked", IO.connect_listener, self)
-		grid.attach(device_btn, 1, 1, 2, 1)
-
-		self.feed = Gtk.TextView(hexpand=True, vexpand=True, editable=False)
-		self.feed.set_wrap_mode(Gtk.WrapMode.WORD)
-		apply_mono_style(self.feed, mono_style)
-
-		feed_scroller = Gtk.ScrolledWindow()
-		feed_scroller.add(self.feed)
-		grid.attach(feed_scroller, 0, 2, 3, 1)
-
-		self.filter_bar = Gtk.Entry(hexpand=True)
-		apply_mono_style(self.filter_bar, mono_style)
-		grid.attach(self.filter_bar, 0, 3, 2, 1)
-
-		filter_cb = Gtk.CheckButton()
-		grid.attach(filter_cb, 2, 3, 1, 1)
-
-		self.out_bar = Gtk.Entry(hexpand=True)
-		self.out_bar.io_ref = self
-		self.out_bar.connect("key-press-event", IO.entry_listener, IO.send_listener)
-		apply_mono_style(self.out_bar, mono_style)
-		grid.attach(self.out_bar, 0, 4, 1, 1)
-
-		out_btn = Gtk.Button(label="Send")
-		out_btn.connect("clicked", IO.send_listener, self)
-		grid.attach(out_btn, 1, 4, 2, 1)
-

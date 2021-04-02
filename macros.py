@@ -4,6 +4,7 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 
 import queue
+import time
 
 def get_textview_text(tv):
 	buf = tv.get_buffer()
@@ -242,7 +243,6 @@ class Macros:
 	def __init__(self):
 		self.tabs = {}
 		self.data_queue = queue.Queue()
-		self.notebook = None
 
 	def add_new_tab(self):
 		name = "&Untitled"
@@ -278,8 +278,8 @@ class Macros:
 		if len(self.tabs) == 0:
 			self.add_new_tab()
 
-		for p in self.notebook.get_children():
-			self.notebook.remove(p)
+		for p in ui.notebook.get_children():
+			ui.notebook.remove(p)
 
 		for t in self.tabs:
 			close_image = Gtk.Image(xpad=0, ypad=0)
@@ -297,27 +297,18 @@ class Macros:
 			if t in files_temp:
 				code_text = files_temp[t]
 
-			page = self.tabs[t].produce_ui(self.window, self.mono_style, code_text)
+			page = self.tabs[t].produce_ui(ui.window, mono_style, code_text)
 			header.page_ref = page
-			self.notebook.append_page(page, header)
-
-	def populate_ui(self, window, grid, mono_style):
-		self.window = window
-		self.wnd_grid = grid
-		self.mono_style = mono_style
-
-		self.notebook = Gtk.Notebook()
-		self.populate_notebook()
-		grid.attach(self.notebook, 0, 1, 1, 1)
+			ui.notebook.append_page(page, header)
 
 	def close_tab(self, page):
 		tab = page.tab_ref
 		path = tab.id
 
 		del self.tabs[path]
-		self.notebook.remove(page)
+		ui.notebook.remove(page)
 
-		if self.notebook.get_n_pages() <= 0:
+		if ui.notebook.get_n_pages() <= 0:
 			if os.path.exists("config.cfg"):
 				os.remove("config.cfg")
 
@@ -384,13 +375,13 @@ class Macros:
 			tab.id = path
 			tab.name = Tab.name_from_path(tab.id)
 
-			self.notebook.get_tab_label(page).get_children()[0].set_text(tab.name)
+			ui.notebook.get_tab_label(page).get_children()[0].set_text(tab.name)
 
 		dialog.destroy()
 
 	def save_current_tab(self):
-		idx = self.notebook.get_current_page()
-		page = self.notebook.get_nth_page(idx)
+		idx = ui.notebook.get_current_page()
+		page = ui.notebook.get_nth_page(idx)
 		tab = page.tab_ref
 		path = tab.id
 
