@@ -3,6 +3,9 @@ Existing Macro Functions:
 ### void macro.log(str text)
 Prints 'text' to the command window on a new line.
 
+### void macro.include_local(str fname)
+Loads a python script relative to Breakfast's directory and executes it
+
 ### str macro.get_buffer()
 Returns a string representation of the current state of the text buffer.
 
@@ -11,6 +14,9 @@ Sets the text in the text buffer window to just the contents of 'text'.
 
 ### void macro.write_data(bytes|bytearray data)
 Writes the contents of data to the serial interface
+
+### void macro.write_bytes(int bytes...)
+Combines each parameter into a byte array, then writes that to the serial interface
 
 ### bytes macro.read_data(int size = 1)
 Blocks until 'size' bytes of data from the serial interface are available, then returns them

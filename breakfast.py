@@ -27,6 +27,14 @@ mono_style.load_from_data(b"""
 	}
 """)
 
+green_style = Gtk.CssProvider()
+green_style.load_from_data(b"""
+	.green {
+		background-color: #8ea;
+		color: black;
+	}
+""")
+
 io = IO()
 macros = Macros()
 
@@ -163,4 +171,3 @@ except BaseException as e:
 	pass
 
 io.comms.close()
-

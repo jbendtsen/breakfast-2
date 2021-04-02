@@ -5,8 +5,9 @@ from gi.repository import Gtk
 exec(load_local_script("serial.py"))
 
 import threading
-import os
 import select
+import queue
+import time
 
 class Comms(threading.Thread) :
 	def __init__(self, io) :
@@ -115,7 +116,7 @@ class IO:
 			return
 
 		io.out_bar.set_text("")
-		self.comms.send(data)
+		io.comms.send(data)
 
 	def entry_listener(widget, ev, func):
 		if ev.keyval == Gdk.KEY_Return:
@@ -124,12 +125,40 @@ class IO:
 	def __init__(self):
 		self.serial = Serial()
 		self.comms = Comms(self)
+		self.data = bytearray()
+		self.feed_queue = queue.Queue()
+		self.feed_thread = None
 
 	def append_byte(self, byte):
-		self.feed.set_editable(True)
-		buf = self.feed.get_buffer()
-		buf.insert(buf.get_end_iter(), "{0:02x} ".format(byte))
-		self.feed.set_editable(False)
+		self.feed_queue.put(byte)
+		macros.data_queue.put(byte)
+
+		if self.feed_thread is None or not self.feed_thread.is_alive():
+			self.feed_thread = threading.Thread(target=lambda: self.add_bytes_to_feed())
+			self.feed_thread.start()
+
+	def add_bytes_to_feed(self):
+		while not self.feed_queue.empty():
+			latest = bytearray()
+
+			empty = False
+			while not empty:
+				try:
+					byte = self.feed_queue.get(block=False)
+					latest.append(byte)
+				except:
+					empty = True
+
+			msg = ""
+			for byte in latest:
+				msg += "{0:02x} ".format(byte)
+
+			self.feed.set_editable(True)
+			buf = self.feed.get_buffer()
+			buf.insert(buf.get_end_iter(), msg)
+			self.feed.set_editable(False)
+
+			time.sleep(0.1)
 
 	def try_connect(self, name):
 		error = True
@@ -143,20 +172,34 @@ class IO:
 		else:
 			error = False
 
+		style = self.device_bar.get_style_context()
+
 		if error:
+			if style.has_class("green"):
+				style.remove_class("green")
+
 			dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.ERROR, buttons=Gtk.ButtonsType.CLOSE, text=msg)
 			dialog.run()
 			dialog.destroy()
 			return
 
-		self.comms.close()
+		if not style.has_class("green"):
+			style.add_class("green")
+
+		if self.comms.running:
+			self.comms.close()
+			self.comms = Comms(self)
+
 		self.comms.start()
 
 	def populate_ui(self, window, grid, mono_style):
 		self.device_bar = Gtk.Entry(hexpand=True)
 		self.device_bar.io_ref = self
 		self.device_bar.connect("key-press-event", IO.entry_listener, IO.connect_listener)
+
 		apply_mono_style(self.device_bar, mono_style)
+		self.device_bar.get_style_context().add_provider(green_style, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
 		grid.attach(self.device_bar, 0, 1, 1, 1)
 
 		device_btn = Gtk.Button(label="Connect")
@@ -164,8 +207,12 @@ class IO:
 		grid.attach(device_btn, 1, 1, 2, 1)
 
 		self.feed = Gtk.TextView(hexpand=True, vexpand=True, editable=False)
+		self.feed.set_wrap_mode(Gtk.WrapMode.WORD)
 		apply_mono_style(self.feed, mono_style)
-		grid.attach(self.feed, 0, 2, 3, 1)
+
+		feed_scroller = Gtk.ScrolledWindow()
+		feed_scroller.add(self.feed)
+		grid.attach(feed_scroller, 0, 2, 3, 1)
 
 		self.filter_bar = Gtk.Entry(hexpand=True)
 		apply_mono_style(self.filter_bar, mono_style)

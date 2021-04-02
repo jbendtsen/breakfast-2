@@ -3,6 +3,8 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+import queue
+
 def get_textview_text(tv):
 	buf = tv.get_buffer()
 	return buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
@@ -44,6 +46,7 @@ class Tab:
 	def __init__(self, path, macros):
 		self.macros_ref = macros
 		self.macro = {}
+
 		self.disable_buffer_change_event = False
 		self.on_buffer_changed = None
 		self.on_command = None
@@ -63,6 +66,9 @@ class Tab:
 		adj = self.cmd_scroller.get_vadjustment()
 		adj.set_value(adj.get_upper())
 
+	def include_local(self, fname):
+		exec(load_local_script(fname), self.macro)
+
 	def get_buffer(self):
 		return get_textview_text(self.buffer_tv)
 
@@ -71,6 +77,25 @@ class Tab:
 		self.disable_buffer_change_event = True
 		buf.set_text(text)
 		self.disable_buffer_change_event = False
+
+	def write_data(self, data):
+		if isinstance(data, bytes) or isinstance(data, bytearray):
+			io.comms.send(data)
+
+	def write_bytes(self, *bytes_tuple):
+		io.comms.send(bytes(bytes_tuple))
+
+	def read_data(self, size=1, timeout=None):
+		data = bytearray()
+
+		if size >= 1:
+			for i in range(0, size):
+				data.append(self.macros_ref.data_queue.get(block=True, timeout=timeout))
+		else:
+			while not self.queue.empty():
+				data.append(self.macros_ref.data_queue.get(block=False, timeout=timeout))
+
+		return data
 
 	def execute(self):
 		try:
@@ -142,7 +167,7 @@ class Tab:
 			value = ev.button
 			x = ev.x
 			y = ev.y
-		elif ev.type == Gdk.EventType.MOTTabN_NOTIFY:
+		elif ev.type == Gdk.EventType.MOTION_NOTIFY:
 			event_type = "mousemove"
 			x = ev.x
 			y = ev.y
@@ -216,6 +241,7 @@ class Tab:
 class Macros:
 	def __init__(self):
 		self.tabs = {}
+		self.data_queue = queue.Queue()
 		self.notebook = None
 
 	def add_new_tab(self):
@@ -374,4 +400,3 @@ class Macros:
 
 		with open(path, "w") as f:
 			f.write(get_textview_text(tab.code_tv))
-
