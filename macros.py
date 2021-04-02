@@ -7,39 +7,28 @@ def get_textview_text(tv):
 	buf = tv.get_buffer()
 	return buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
 
-def close_button_listener(widget):
-	page = widget.get_parent().page_ref
-	page.tab_ref.macros_ref.close_tab(page)
+class Tab:
+	def close_button_listener(widget):
+		page = widget.get_parent().page_ref
+		page.tab_ref.macros_ref.close_tab(page)
 
-def execute_listener(widget):
-	widget.tab_ref.execute()
+	def execute_listener(widget):
+		widget.tab_ref.execute()
 
-def submit_listener(widget):
-	widget.tab_ref.submit()
-
-def buffer_listener(widget, data=None):
-	if not widget.tab_ref.disable_buffer_change_event:
-		widget.tab_ref.send_buffer_changed()
-
-def entry_listener(widget, ev, data=None):
-	if ev.keyval == Gdk.KEY_Return:
+	def submit_listener(widget):
 		widget.tab_ref.submit()
 
-def direct_listener(widget, ev, data=None):
-	widget.tab_ref.send_direct_event(ev)
-	return True
+	def buffer_listener(widget, data=None):
+		if not widget.tab_ref.disable_buffer_change_event:
+			widget.tab_ref.send_buffer_changed()
 
-class Tab:
-	def __init__(self, path, macros):
-		self.macros_ref = macros
-		self.macro = {}
-		self.disable_buffer_change_event = False
-		self.on_buffer_changed = None
-		self.on_command = None
-		self.on_direct_event = None
+	def entry_listener(widget, ev, data=None):
+		if ev.keyval == Gdk.KEY_Return:
+			widget.tab_ref.submit()
 
-		self.id = path
-		self.name = Tab.name_from_path(self.id)
+	def direct_listener(widget, ev, data=None):
+		widget.tab_ref.send_direct_event(ev)
+		return True
 
 	def name_from_path(path):
 		name = path
@@ -51,6 +40,17 @@ class Tab:
 			name = path[start:]
 
 		return name
+
+	def __init__(self, path, macros):
+		self.macros_ref = macros
+		self.macro = {}
+		self.disable_buffer_change_event = False
+		self.on_buffer_changed = None
+		self.on_command = None
+		self.on_direct_event = None
+
+		self.id = path
+		self.name = Tab.name_from_path(self.id)
 
 	def log(self, msg):
 		text = str(msg)
@@ -142,7 +142,7 @@ class Tab:
 			value = ev.button
 			x = ev.x
 			y = ev.y
-		elif ev.type == Gdk.EventType.MOTION_NOTIFY:
+		elif ev.type == Gdk.EventType.MOTTabN_NOTIFY:
 			event_type = "mousemove"
 			x = ev.x
 			y = ev.y
@@ -159,7 +159,7 @@ class Tab:
 		code_scroller.add(self.code_tv)
 
 		exec_btn = Gtk.Button(label="Execute", halign=Gtk.Align.END)
-		exec_btn.connect("clicked", execute_listener)
+		exec_btn.connect("clicked", Tab.execute_listener)
 		exec_btn.tab_ref = self
 
 		code_grid.attach(code_scroller, 0, 0, 2, 1)
@@ -169,7 +169,7 @@ class Tab:
 		apply_mono_style(self.buffer_tv, mono_style)
 		buf = self.buffer_tv.get_buffer()
 		buf.tab_ref = self
-		buf.connect("changed", buffer_listener)
+		buf.connect("changed", Tab.buffer_listener)
 
 		buffer_scroller = Gtk.ScrolledWindow()
 		buffer_scroller.add(self.buffer_tv)
@@ -184,12 +184,12 @@ class Tab:
 
 		self.cmd_entry = Gtk.Entry(hexpand=True)
 		apply_mono_style(self.cmd_entry, mono_style)
-		self.cmd_entry.connect("key-press-event", entry_listener)
+		self.cmd_entry.connect("key-press-event", Tab.entry_listener)
 		self.cmd_entry.tab_ref = self
 
 		cmd_btn = Gtk.Button(label="Submit", halign=Gtk.Align.END)
 		cmd_btn.tab_ref = self
-		cmd_btn.connect("clicked", submit_listener)
+		cmd_btn.connect("clicked", Tab.submit_listener)
 
 		cmd_grid.attach(self.cmd_scroller, 0, 0, 2, 1)
 		cmd_grid.attach(self.cmd_entry, 0, 1, 1, 1)
@@ -197,12 +197,12 @@ class Tab:
 
 		self.draw_area = Gtk.DrawingArea(can_focus=True, events=Gdk.EventMask.ALL_EVENTS_MASK)
 		self.draw_area.tab_ref = self
-		self.draw_area.connect("key-press-event", direct_listener)
-		self.draw_area.connect("key-release-event", direct_listener)
-		self.draw_area.connect("button-press-event", direct_listener)
-		self.draw_area.connect("button-release-event", direct_listener)
-		self.draw_area.connect("scroll-event", direct_listener)
-		self.draw_area.connect("motion-notify-event", direct_listener)
+		self.draw_area.connect("key-press-event", Tab.direct_listener)
+		self.draw_area.connect("key-release-event", Tab.direct_listener)
+		self.draw_area.connect("button-press-event", Tab.direct_listener)
+		self.draw_area.connect("button-release-event", Tab.direct_listener)
+		self.draw_area.connect("scroll-event", Tab.direct_listener)
+		self.draw_area.connect("motion-notify-event", Tab.direct_listener)
 
 		tab_ui = Gtk.Notebook()
 		tab_ui.append_page(code_grid, Gtk.Label(label="Code"))
@@ -260,7 +260,7 @@ class Macros:
 			close_image.set_from_icon_name("window-close-symbolic", Gtk.IconSize.SMALL_TOOLBAR)
 
 			close_button = Gtk.Button(image=close_image, relief=Gtk.ReliefStyle.NONE)
-			close_button.connect("clicked", close_button_listener)
+			close_button.connect("clicked", Tab.close_button_listener)
 
 			header = Gtk.HBox(spacing=8)
 			header.pack_start(Gtk.Label(label=self.tabs[t].name), True, True, 0)

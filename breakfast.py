@@ -155,4 +155,12 @@ macros.populate_ui(wnd_macros, grid_macros, mono_style)
 
 wnd_io.show_all()
 wnd_macros.show_all()
-Gtk.main()
+
+try:
+	Gtk.main()
+except BaseException as e:
+	traceback.print_exc()
+	pass
+
+io.comms.close()
+
