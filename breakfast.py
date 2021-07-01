@@ -44,7 +44,7 @@ def close_window(widget):
 def macro_new(widget, window):
 	macros.add_new_tab()
 	macros.populate_notebook()
-	macros.window.show_all()
+	ui.window.show_all()
 
 def macro_open(widget, window):
 	macros.open_file()
@@ -122,8 +122,34 @@ class UI:
 		device_btn.connect("clicked", lambda widget, ui : ui.connect(), self)
 		self.grid.attach(device_btn, 1, 1, 1, 1)
 
+		self.macros_io_nb = Gtk.Notebook(hexpand=True, vexpand=True)
+		self.grid.attach(self.macros_io_nb, 0, 2, 2, 1)
+
 		self.notebook = Gtk.Notebook(hexpand=True, vexpand=True)
-		self.grid.attach(self.notebook, 0, 2, 2, 1)
+		self.macros_io_nb.append_page(self.notebook, Gtk.Label(label="Macros"))
+
+		self.io_output_grid = Gtk.Grid(hexpand=True, vexpand=True)
+		self.io_output_grid.set_row_spacing(8)
+		self.io_output_grid.set_column_spacing(8)
+
+		self.io_output_grid.attach(Gtk.Label(label="Filter"), 0, 0, 1, 1)
+
+		self.io_output_filter = Gtk.Entry(hexpand=True)
+		apply_mono_style(self.io_output_filter, mono_style)
+		self.io_output_grid.attach(self.io_output_filter, 1, 0, 1, 1)
+
+		self.io_output_tv = Gtk.TextView(vexpand=True, editable=False)
+		self.io_output_tv.set_wrap_mode(Gtk.WrapMode.WORD)
+		apply_mono_style(self.io_output_tv, mono_style)
+
+		self.io_output_scroller = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
+		self.io_output_scroller.add(self.io_output_tv)
+		self.io_output_grid.attach(self.io_output_scroller, 0, 1, 2, 1)
+
+		self.io_output_ascii = Gtk.CheckButton(label="Ascii")
+		self.io_output_grid.attach(self.io_output_ascii, 0, 2, 2, 1)
+
+		self.macros_io_nb.append_page(self.io_output_grid, Gtk.Label(label="IO"))
 
 		self.out_bar = Gtk.Entry(hexpand=True)
 		self.out_bar.connect("key-press-event", send_press_listener, self)

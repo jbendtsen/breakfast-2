@@ -1,6 +1,7 @@
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
+from gi.repository import GObject
 
 exec(load_local_script("serial.py"))
 
@@ -104,10 +105,49 @@ def str2ba(string):
 
 	return buf
 
-class IO:
+class IO(GObject.GObject):
 	def __init__(self):
+		GObject.GObject.__init__(self)
+
+		GObject.type_register(IO)
+		GObject.signal_new("data-available", IO, GObject.SignalFlags.RUN_FIRST, GObject.TYPE_NONE, ())
+
+		self.connect("data-available", self.on_data_available)
+		self.writing = False
+
+		self.data_queue = queue.Queue()
+		self.output = bytearray()
+
 		self.serial = Serial()
 		self.comms = Comms(self)
+
+	def on_data_available(self, sender):
+		if self.data_queue.empty():
+			return
+
+		while self.writing:
+			pass
+
+		self.writing = True
+
+		data = bytearray()
+		while not self.data_queue.empty():
+			data.append(self.data_queue.get())
+
+		text = ""
+		if ui.io_output_ascii.get_active():
+			text = str(data, "utf8")
+		else:
+			for d in data:
+				text += "{0:02x} ".format(d)
+
+		buf = ui.io_output_tv.get_buffer()
+		buf.insert(buf.get_end_iter(), text)
+
+		adj = ui.io_output_scroller.get_vadjustment()
+		adj.set_value(adj.get_upper())
+
+		self.writing = False
 
 	def send_byte_string(self, s):
 		data = str2ba(s)
@@ -118,6 +158,9 @@ class IO:
 
 	def append_byte(self, byte):
 		macros.data_queue.put(byte)
+		self.data_queue.put(byte)
+		self.output.append(byte)
+		self.emit("data-available")
 
 	def try_connect(self, name):
 		error = True

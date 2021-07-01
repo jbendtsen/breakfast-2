@@ -80,7 +80,9 @@ class Tab:
 		self.disable_buffer_change_event = False
 
 	def write_data(self, data):
-		if isinstance(data, bytes) or isinstance(data, bytearray):
+		if isinstance(data, str):
+			io.comms.send(bytes(data, "utf8"))
+		elif isinstance(data, bytes) or isinstance(data, bytearray):
 			io.comms.send(data)
 
 	def write_bytes(self, *bytes_tuple):

@@ -137,4 +137,3 @@ class Serial:
 
 		self.in_use = False
 		return size
-
